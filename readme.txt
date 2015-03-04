@@ -30,8 +30,3 @@ This will give you an option to open in a browser. Press Enter or type 'Y'.
 * To stop the web server type command 'stop.'
 
 * Don't forget to use 'make.'  and 'ailp_reset.' when you have made changes to the code.
-
-
-
-
-

@@ -10,7 +10,8 @@ candidate_number(17655).
 
 solve_task(Task,Cost):-
 	agent_current_position(oscar,P),
-	solve_task_bt(Task,[c(0,P),P],0,R,Cost,_NewPos),!,	% prune choice point for efficiency
+	solve_task_bt(Task,[c(0,P),P],0,R,Cost,_NewPos),
+    !, % prune choice point for efficiency
 	reverse(R,[_Init|Path]),
 	agent_do_moves(oscar,Path).
 
@@ -25,6 +26,15 @@ solve_task_bt(Task,Current,D,RR,Cost,NewPos) :-
 	F1 is F+C,
 	solve_task_bt(Task,[c(F1,P1),R|RPath],D1,RR,Cost,NewPos). % backtracking search
 
+%% agenda-based A* search
+solve_task_a([Goal|Tail], Goal).
+solve_task_a([Current|Tail], Goal) :-
+    children(Current, Children),
+    add_to_agenda(Children, Tail, NewAgenda),
+    solve_task_a(NewAgenda, Goal).
+children(Current, Children) :-
+    .
+eval_heuristic.
 
 achieved(go(Exit),Current,RPath,Cost,NewPos) :-
 	Current = [c(Cost,NewPos)|RPath],
@@ -72,7 +82,7 @@ show_response(R):-
 	).
 
 writes(A):-
-	( A=[]      -> nl
+	( A=[]      -> nls
 	; A=nl      -> nl
 	; A=[H|T]   -> writes(H),writes(T)
 	; A=term(T) -> write(T)

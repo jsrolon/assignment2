@@ -20,17 +20,17 @@ solve_task_bt(Task,Current,Depth,RPath,[cost(Cost),depth(Depth)],NewPos) :-
 	achieved(Task,Current,RPath,Cost,NewPos).
 solve_task_bt(Task,Current,D,RR,Cost,NewPos) :-
 	Current = [c(F,P)|RPath], % Current is a list with first element c(F,P) where P is the current node position p(X,Y)
-							  % and F is the cost from the first node of the list to that position. RPath is the Reverse
-							  % Path from the first node to the goal, that is, the path from the goal to the first node.
-							  % Its members are of the form p(X,Y).
+				  % and F is the cost from the first node of the list to that position. RPath is the Reverse
+				  % Path from the first node to the goal, that is, the path from the goal to the first node.
+				  % Its members are of the form p(X,Y).
 	search(P,P1,R,C), % returns P1 = R, the next position to be visited. C is always 1 (the weight between graph nodes).
 	\+ memberchk(R,RPath),
 	D1 is D+1, % search depth calculation
 	F1 is F+C, % next node cost calculation
 	solve_task_bt(Task,[c(F1,P1),R|RPath],D1,RR,Cost,NewPos). % This adds the next node to the list both as the c(F,P)
-															  % structure and the position itself (P). As RR (ReversePath),
-															  % Cost and NewPos are constant, they must be used when a goal
-															  % is found.
+								  % structure and the position itself (P). As RR (ReversePath),
+								  % Cost and NewPos are constant, they must be used when a goal
+								  % is found.
 
 %% agenda-based A* search
 solve_task_a([Goal|Tail], Goal).

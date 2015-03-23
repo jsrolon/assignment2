@@ -12,7 +12,7 @@ solve_task(Task,Cost):-
 	agent_current_position(oscar,P),
 	solve_task_bt(Task,[c(0,P),P],0,R,Cost,_NewPos), % sends the task 
     !, % prune choice point for efficiency
-	reverse(R,[_Init|Path]),
+	reverse(R,[_Init|Path]), % Removes first path element because agent is already there
 	agent_do_moves(oscar,Path).
 
 %% backtracking depth-first search, needs to be changed to agenda-based A*
@@ -28,9 +28,9 @@ solve_task_bt(Task,Current,D,RR,Cost,NewPos) :-
 	D1 is D+1, % search depth calculation
 	F1 is F+C, % next node cost calculation
 	solve_task_bt(Task,[c(F1,P1),R|RPath],D1,RR,Cost,NewPos). % This adds the next node to the list both as the c(F,P)
-															  % structure and the position itself (P). As RR, Cost and
-															  % NewPos are constant, they must be used when a goal is
-															  % found.
+															  % structure and the position itself (P). As RR (ReversePath),
+															  % Cost and NewPos are constant, they must be used when a goal
+															  % is found.
 
 %% agenda-based A* search
 solve_task_a([Goal|Tail], Goal).
@@ -41,10 +41,11 @@ solve_task_a([Current|Tail], Goal) :-
 children(Current, Children) :-.
 eval_heuristic.
 
+% Exit is the genius name for the goal position, p(X,Y)
 achieved(go(Exit),Current,RPath,Cost,NewPos) :-
 	Current = [c(Cost,NewPos)|RPath],
-	( Exit=none -> true
-	; otherwise -> RPath = [Exit|_]
+	( Exit=none -> true % if there is no node to look for, stop the search
+	; otherwise -> RPath = [Exit|_] % check if Exit is the first element of RPath
 	).
 achieved(find(O),Current,RPath,Cost,NewPos) :-
 	Current = [c(Cost,NewPos)|RPath],

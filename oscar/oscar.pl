@@ -10,21 +10,27 @@ candidate_number(17655).
 
 solve_task(Task,Cost):-
 	agent_current_position(oscar,P),
-	solve_task_bt(Task,[c(0,P),P],0,R,Cost,_NewPos),
+	solve_task_bt(Task,[c(0,P),P],0,R,Cost,_NewPos), % sends the task 
     !, % prune choice point for efficiency
 	reverse(R,[_Init|Path]),
 	agent_do_moves(oscar,Path).
 
 %% backtracking depth-first search, needs to be changed to agenda-based A*
-solve_task_bt(Task,Current,Depth,RPath,[cost(Cost),depth(Depth)],NewPos) :- 
+solve_task_bt(Task,Current,Depth,RPath,[cost(Cost),depth(Depth)],NewPos) :-
 	achieved(Task,Current,RPath,Cost,NewPos).
 solve_task_bt(Task,Current,D,RR,Cost,NewPos) :-
-	Current = [c(F,P)|RPath],
-	search(P,P1,R,C),
-	\+ memberchk(R,RPath), % check we have not been here already
-	D1 is D+1,
-	F1 is F+C,
-	solve_task_bt(Task,[c(F1,P1),R|RPath],D1,RR,Cost,NewPos). % backtracking search
+	Current = [c(F,P)|RPath], % Current is a list with first element c(F,P) where P is the current node position p(X,Y)
+							  % and F is the cost from the first node of the list to that position. RPath is the Reverse
+							  % Path from the first node to the goal, that is, the path from the goal to the first node.
+							  % Its members are of the form p(X,Y).
+	search(P,P1,R,C), % returns P1 = R, the next position to be visited. C is always 1 (the weight between graph nodes).
+	\+ memberchk(R,RPath),
+	D1 is D+1, % search depth calculation
+	F1 is F+C, % next node cost calculation
+	solve_task_bt(Task,[c(F1,P1),R|RPath],D1,RR,Cost,NewPos). % This adds the next node to the list both as the c(F,P)
+															  % structure and the position itself (P). As RR, Cost and
+															  % NewPos are constant, they must be used when a goal is
+															  % found.
 
 %% agenda-based A* search
 solve_task_a([Goal|Tail], Goal).
@@ -32,8 +38,7 @@ solve_task_a([Current|Tail], Goal) :-
     children(Current, Children),
     add_to_agenda(Children, Tail, NewAgenda),
     solve_task_a(NewAgenda, Goal).
-children(Current, Children) :-
-    .
+children(Current, Children) :-.
 eval_heuristic.
 
 achieved(go(Exit),Current,RPath,Cost,NewPos) :-
@@ -47,7 +52,7 @@ achieved(find(O),Current,RPath,Cost,NewPos) :-
 	; otherwise -> RPath = [Last|_],map_adjacent(Last,_,O)
 	).
 
-
+% Search takes a position F (p(X,Y)) and returns adjacent position N (p(X,Y)) with an arc weight of 1 between them
 search(F,N,N,1):-
 	map_adjacent(F,N,empty).
 

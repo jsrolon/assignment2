@@ -7,34 +7,54 @@
 
 candidate_number(17655).
 
-
-solve_task(Task,Cost):-
-	agent_current_position(oscar,P),
-	solve_task_bt(Task,[c(0,P),P],0,R,Cost,_NewPos),
-    !, % prune choice point for efficiency
-	reverse(R,[_Init|Path]),
-	agent_do_moves(oscar,Path).
-
-%% backtracking depth-first search, needs to be changed to agenda-based A*
-solve_task_bt(Task,Current,Depth,RPath,[cost(Cost),depth(Depth)],NewPos) :- 
-	achieved(Task,Current,RPath,Cost,NewPos).
-solve_task_bt(Task,Current,D,RR,Cost,NewPos) :-
-	Current = [c(F,P)|RPath],
-	search(P,P1,R,C),
-	\+ memberchk(R,RPath), % check we have not been here already
-	D1 is D+1,
-	F1 is F+C,
-	solve_task_bt(Task,[c(F1,P1),R|RPath],D1,RR,Cost,NewPos). % backtracking search
-
 %% agenda-based A* search
-solve_task_a([Goal|Tail], Goal).
-solve_task_a([Current|Tail], Goal) :-
-    children(Current, Children),
-    add_to_agenda(Children, Tail, NewAgenda),
-    solve_task_a(NewAgenda, Goal).
-children(Current, Children) :-
-    .
-eval_heuristic.
+% best-first search
+% goal/1, children/2 and eval/2 depend on
+% the search problem at hand
+search_bstf([Goal|Rest],Goal):-
+	goal(Goal).
+
+search_bstf([Current|Rest],Goal):-
+	children(Current,Children),
+	add_bstf(Children,Rest,NewAgenda),
+	search_bstf(NewAgenda,Goal).
+
+
+
+add_bstf([],Agenda,Agenda).
+
+add_bstf([Child|Children],OldAgenda,NewAgenda):-
+	add_one(Child,OldAgenda,TmpAgenda),
+	add_bstf(Children,TmpAgenda,NewAgenda).
+
+
+% add_one(S,A,B) <- B is A with S inserted acc. to eval/2
+add_one(Child,OldAgenda,NewAgenda):-
+	eval(Child,Value),
+	add_one(Value,Child,OldAgenda,NewAgenda).
+
+add_one(Value,Child,[],[Child]).
+
+add_one(Value,Child,[Node|Rest],[Child,Node|Rest]):-
+	eval(Node,V),
+	Value<V.
+
+add_one(Value,Child,[Node|Rest],[Node|NewRest]):-
+	eval(Node,V),
+	Value>=V,
+	add_one(Value,Child,Rest,NewRest).
+
+eval(Child,V) :-
+
+
+
+
+
+
+
+
+
+
 
 achieved(go(Exit),Current,RPath,Cost,NewPos) :-
 	Current = [c(Cost,NewPos)|RPath],

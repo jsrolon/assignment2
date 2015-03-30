@@ -10,7 +10,7 @@ candidate_number(17655).
 solve_task(Task,Cost):-
 	b_setval(goal_position, Task),
 	agent_current_position(oscar,P),
-	solve_task_a(Task,[state(0,0,Pos,RPath),P],R,Cost,_NewPos), % sends the task 
+	solve_task_a(Task,[state(0,0,P,[P])],R,[],Cost,_NewPos), % sends the task 
     !, % prune choice point for efficiency
 	reverse(R,[_Init|Path]), % Removes first path element because agent is already there
 	agent_do_moves(oscar,Path).
@@ -36,24 +36,29 @@ solve_task_bt(Task,Current,D,RR,Cost,NewPos) :-
 % best-first search
 % goal/1, children/2 and eval/2 depend on
 % the search problem at hand
-solve_task_a(Task,Agenda,RPath,[cost(Cost),depth(Depth)],NewPos) :-
+solve_task_a(Task,Agenda,RPath,_,[cost(Cost),depth(Depth)],NewPos) :-
 	achieved(Task,Agenda,RPath,Cost,NewPos).
-solve_task_a(Task,Agenda,RR,Cost,NewPos) :-
-	Agenda = [state(F,G,Pos,RPath)|Rest],
-    children(state(F,G,Pos,RPath), Children),
+solve_task_a(Task,Agenda,RR,OldHistory,Cost,NewPos) :-
+    Agenda = [state(_,_,Pos,_)|Rest],
+    children(Agenda, OldHistory, History, Children),
     bestf_add(Children, Rest, NewAgenda),
-    solve_task_a(Task,NewAgenda,RR,Cost,NewPos).
+    solve_task_a(Task, NewAgenda, RR, History, Cost, NewPos).
 
-children(Current, Children) :-
-	Current = state(F,G,Pos,RPath),
-	bagof(N, map_adjacent(Pos, N, empty), Children_pos),
-	maplist(state_from_pos(Current), Children_pos, Children).
+children(Agenda, OldHistory, History, Children) :-
+	Agenda = [state(F,G,Pos,RPath)|Rest],
+	bagof(N, map_adjacent(Pos, N, empty), Unfiltered_Children_pos),
+	exclude(a_star_memberchk(OldHistory),Unfiltered_Children_pos,Children_pos), % filter
+	union(OldHistory,Unfiltered_Children_pos,History),
+	maplist(state_from_pos(Agenda, History), Children_pos, Children).
 
-state_from_pos(Current, ChildPos, State) :-
-	Current = state(F,G,Pos,RPath),
+a_star_memberchk(List, Element) :-
+	memberchk(Element, List).
+
+state_from_pos(Agenda, History, ChildPos, State) :-
+	Agenda = [state(F,G,Pos,RPath)|Rest],
 	ChildG is G + 1,
 	eval(ChildPos,ChildG,ChildF),
-	State = state(ChildF, ChildG, ChildPos, [ChildPos|Rpath]).
+	State = state(ChildF, ChildG, ChildPos, [ChildPos|RPath]).
 
 bestf_add([],Agenda,Agenda).
 bestf_add([Child|Children],OldAgenda,NewAgenda):-
@@ -65,11 +70,11 @@ add_state(Child,[],[Child]).
 add_state(Child,[Node|Rest],[Child,Node|Rest]):-
 	Child = state(ChildF, _, _, _),
 	Node = state(NodeF, _, _, _),
-	NodeF<ChildF.
+	ChildF<NodeF.
 add_state(Child,[Node|Rest],[Node|NewRest]):-
 	Child = state(ChildF, _, _, _),
 	Node = state(NodeF, _, _, _),
-	NodeF>=ChildF,
+	ChildF>=NodeF,
 	add_state(Child,Rest,NewRest).
 
 eval(ChildPos,ChildG,ChildF) :-
@@ -78,10 +83,9 @@ eval(ChildPos,ChildG,ChildF) :-
 	ChildF is H + ChildG.
 
 % Exit is the genius name for the goal position, p(X,Y)
-achieved(go(Exit),Current,RPath,Cost,NewPos) :-
-	Current = [c(Cost,NewPos)|RPath],
+achieved(go(Exit),[state(F,G,Pos,RPath)|Rest],RPath,Cost,NewPos) :-
 	( Exit=none -> true % if there is no node to look for, stop the search
-	; otherwise -> RPath = [Exit|_] % check if Exit is the first element of RPath
+	; otherwise -> Exit = Pos % check if Exit is the first element of RPath
 	).
 achieved(find(O),Current,RPath,Cost,NewPos) :-
 	Current = [c(Cost,NewPos)|RPath],
@@ -124,7 +128,7 @@ show_response(R):-
 	).
 
 writes(A):-
-	( A=[]      -> nls
+	( A=[]      -> nl
 	; A=nl      -> nl
 	; A=[H|T]   -> writes(H),writes(T)
 	; A=term(T) -> write(T)

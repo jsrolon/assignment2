@@ -4,11 +4,15 @@
  *		Students edit this program to complete the assignment.
  */
 
+:- consult(wp).
 
 candidate_number(17655).
 
 solve_task(Task,Cost):-
 	b_setval(goal_position, Task),
+	( Task = go(_) -> b_setval(eval, go_eval)
+	; otherwise -> b_setval(eval, find_eval)
+	),
 	agent_current_position(oscar,P),
 	solve_task_a(Task,[state(0,0,P,[P])],R,[],Cost,_NewPos), % sends the task 
     !, % prune choice point for efficiency
@@ -36,8 +40,8 @@ solve_task_bt(Task,Current,D,RR,Cost,NewPos) :-
 % best-first search
 % goal/1, children/2 and eval/2 depend on
 % the search problem at hand
-solve_task_a(Task,Agenda,RPath,_,[cost(Cost),depth(Depth)],NewPos) :-
-	achieved(Task,Agenda,RPath,Cost,NewPos).
+solve_task_a(Task,Agenda,RPath,History,[cost(Cost),depth(Depth)],NewPos) :-
+	achieved(Task,Agenda,RPath,History,[cost(Cost),depth(Depth)],NewPos).
 solve_task_a(Task,Agenda,RR,OldHistory,Cost,NewPos) :-
     Agenda = [state(_,_,Pos,_)|Rest],
     children(Agenda, OldHistory, History, Children),
@@ -57,7 +61,8 @@ a_star_memberchk(List, Element) :-
 state_from_pos(Agenda, History, ChildPos, State) :-
 	Agenda = [state(F,G,Pos,RPath)|Rest],
 	ChildG is G + 1,
-	eval(ChildPos,ChildG,ChildF),
+	b_getval(eval, Eval),
+	call(Eval,ChildPos,ChildG,ChildF),
 	State = state(ChildF, ChildG, ChildPos, [ChildPos|RPath]).
 
 bestf_add([],Agenda,Agenda).
@@ -77,26 +82,36 @@ add_state(Child,[Node|Rest],[Node|NewRest]):-
 	ChildF>=NodeF,
 	add_state(Child,Rest,NewRest).
 
-eval(ChildPos,ChildG,ChildF) :-
+go_eval(ChildPos,ChildG,ChildF) :-
 	b_getval(goal_position, go(Goal)),
 	map_distance(ChildPos,Goal, H),
 	ChildF is H + ChildG.
 
+find_eval(ChildPos, ChildG, ChildG).
+
 % Exit is the genius name for the goal position, p(X,Y)
-achieved(go(Exit),[state(F,G,Pos,RPath)|Rest],RPath,Cost,NewPos) :-
+achieved(go(Exit),Agenda,RPath,History,[cost(F), depth(Depth)],NewPos) :-
+	Agenda = [state(F,G,Pos,RPath)|Rest],
 	( Exit=none -> true % if there is no node to look for, stop the search
 	; otherwise -> Exit = Pos % check if Exit is the first element of RPath
-	).
-achieved(find(O),Current,RPath,Cost,NewPos) :-
-	Current = [c(Cost,NewPos)|RPath],
+	),
+	length(Agenda, ALength),
+	length(History, HLength),
+	Depth is HLength - ALength + 1.
+
+achieved(find(O),Agenda,RPath,History,[cost(F), depth(Depth)],_) :-
+	Agenda = [state(F,_,Pos,RPath)|_],
 	( O=none    -> true
-	; otherwise -> RPath = [Last|_],map_adjacent(Last,_,O)
-	).
+	; otherwise -> map_adjacent(Pos,_,O)
+	),
+	\+ agent_check_oracle(oscar, O),
+	length(Agenda, ALength),
+	length(History, HLength),
+	Depth is HLength - ALength + 1.
 
 % Search takes a position F (p(X,Y)) and returns adjacent position N (p(X,Y)) with an arc weight of 1 between them
 search(F,N,N,1):-
 	map_adjacent(F,N,empty).
-
 
 %%% command shell %%%
 
